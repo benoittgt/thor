@@ -617,11 +617,14 @@ class Thor
 
       def handle_argument_error(command, error, args, arity) #:nodoc:
         name = [command.ancestor_name, command.name].compact.join(" ")
-        msg = "ERROR: \"#{basename} #{name}\" was called with ".dup
-        msg << "no arguments"               if     args.empty?
-        msg << "arguments " << args.inspect unless args.empty?
-        msg << "\nUsage: \"#{banner(command).split("\n").join("\"\n       \"")}\""
-        raise InvocationError, msg
+        shell = Thor::Base.shell.new
+        shell.say "ERROR: \"#{basename} #{name}\" was called with ".dup
+        shell.say "no arguments"               if     args.empty?
+        shell.say "arguments " << args.inspect unless args.empty?
+        shell.say "\n"
+        command_help(Thor::Base.shell.new, command.name)
+        # raise InvocationError, msg
+        exit 1
       end
 
       # A flag that makes the process exit with status 1 if any error happens.
