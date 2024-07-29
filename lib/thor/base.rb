@@ -617,14 +617,12 @@ class Thor
 
       def handle_argument_error(command, error, args, arity) #:nodoc:
         name = [command.ancestor_name, command.name].compact.join(" ")
-        shell = Thor::Base.shell.new
-        shell.say "ERROR: \"#{basename} #{name}\" was called with ".dup
-        shell.say "no arguments"               if     args.empty?
-        shell.say "arguments " << args.inspect unless args.empty?
-        shell.say "\n"
-        command_help(Thor::Base.shell.new, command.name)
-        # raise InvocationError, msg
-        exit 1
+        msg = "ERROR: \"#{basename} #{name}\" was called with ".dup
+        msg << "no arguments"               if     args.empty?
+        msg << "arguments " << args.inspect unless args.empty?
+        msg << "\nUsage: \"#{banner(command).split("\n").join("\"\n       \"")}\""
+        msg << "\nOptions:\n   #{agg_options(command.options.values, add_comment: false)[0].join("\n   ")}"
+        raise InvocationError, msg
       end
 
       # A flag that makes the process exit with status 1 if any error happens.
@@ -659,21 +657,27 @@ class Thor
       def print_options(shell, options, group_name = nil)
         return if options.empty?
 
+        opts, padding = agg_options(options)
+        shell.say(group_name ? "#{group_name} options:" : "Options:")
+        shell.print_table(opts, indent: 2)
+        shell.say ""
+      end
+
+      def agg_options(options, add_comment: true)
         list = []
         padding = options.map { |o| o.aliases_for_usage.size }.max.to_i
-        options.each do |option|
+        opts = options.each_with_object([]) do |option, list|
           next if option.hide
           item = [option.usage(padding)]
           item.push(option.description ? "# #{option.description}" : "")
 
           list << item
-          list << ["", "# Default: #{option.print_default}"] if option.show_default?
-          list << ["", "# Possible values: #{option.enum_to_s}"] if option.enum
+          if add_comment
+            list << ["", "# Default: #{option.print_default}"] if option.show_default?
+            list << ["", "# Possible values: #{option.enum_to_s}"] if option.enum
+          end
         end
-
-        shell.say(group_name ? "#{group_name} options:" : "Options:")
-        shell.print_table(list, indent: 2)
-        shell.say ""
+        [opts, padding]
       end
 
       # Raises an error if the word given is a Thor reserved word.
